@@ -1,0 +1,72 @@
+#clean workspace
+rm(list=ls())
+
+#set the working directory
+setwd("direction to file")
+
+#load needed libraries
+library(affy)
+library(limma)
+library(gplots)
+library(gcrma) 
+library(bioDist)
+
+
+#include some functions from ArrayAnalysis.org
+setwd("direction to file")
+source ("functions_ArrayAnalysis_v2.R")
+
+dat <- ReadAffy(celfile.path="C:/Users/Lenovo/Desktop/BTR/pathway analysis data/data")
+
+#create a backup for later use
+dat.b <- dat
+#extract the perfect match probes and set to 2log scale
+dat <- log(pm(dat),2)
+
+#load metadata from previously prepared file
+#you can also download and adapt this from the 'Sample and data relationship' file, may be less error prone
+desc <- read.delim("Description_file.txt",as.is=TRUE)
+rownames(desc) <- desc$Name
+colnames(desc)[3] <- "Group" 
+
+# desc data frame has only two columns and the third column does not have a name yet. You should add a new column with the name "Group" before renaming the columns.
+#desc$Group <- NA  # add a new column with the name "Group"
+#colnames(desc)[3] <- "Group"  # rename the third column to "Group"
+#desc$Group <- c("t13", "no13", "t13", "no13", "t13", "no13", "t13")
+desc$Group <- factor(desc$Group,levels=c("n13", "t13"))
+desc$Time <- factor(desc$Time,levels=c("E13.5"))
+desc$Treatment <- factor(desc$Treatment,levels=c("no", "yes"))
+
+#reorder desc to be in same order as samples in dat
+desc <- desc[match(colnames(dat),desc$ArrayDataFile),]
+
+#rename samplenames in dat to more recognisable names
+colnames(dat) <- rownames(desc)
+
+#create QC plots for raw data
+factors <- c("Group","Time","Treatment")
+setwd("C:/Users/Lenovo/Desktop/BTR/pathway analysis data/data")
+createQCPlots(dat, factors, Table=desc, normMeth="", postfix="")
+
+#normalisation#
+sum(sampleNames(dat.b)==desc$ArrayDataFile)==length(colnames(dat.b)) # -> TRUE
+sampleNames(dat.b) <- rownames(desc)
+norm.gcrma <- gcrma(dat.b)
+norm.gcrma <- exprs(norm.gcrma)
+norm.rma <- rma(dat.b)
+norm.rma <- exprs(norm.rma)
+
+#create QC plots for norm data
+setwd("C:/Users/Lenovo/Desktop/BTR/pathway analysis data/data")
+createQCPlots(norm.rma, factors, Table=desc, normMeth="", postfix="")
+
+setwd("C:/Users/Lenovo/Desktop/BTR/pathway analysis data/data")
+createQCPlots(norm.gcrma, factors, Table=desc, normMeth="", postfix="")
+
+#save the normalised data tables
+setwd("C:/Users/Lenovo/Desktop/BTR/pathway analysis data/data")
+write.table(norm.gcrma,file="norm_GCRMA.txt",sep="\t",quote=FALSE,col.names=NA)
+write.table(norm.rma,file="norm_RMA.txt",sep="\t",quote=FALSE,col.names=NA)
+
+
+
