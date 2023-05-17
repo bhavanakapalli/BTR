@@ -1,0 +1,45 @@
+###########################
+##  statistical analysis ##
+###########################
+
+
+
+#load needed libraries
+library(limma)
+library(bioDist)
+library(gplots)
+
+#set the working directory
+setwd("...direction to file")
+
+# convert the "Group" column in the "desc" data frame to a factor variable
+#desc$Group <- factor(desc$Group)
+
+# create two new columns in the design matrix based on the values in the "Group" column
+design <- data.frame(treated = ifelse(desc$Group == "t13", 1, 0),
+                     control = ifelse(desc$Group == "n13", 1, 0))
+#design <- model.matrix(~0+Group,data=desc)
+
+#estimate the extra correlation between measurements made on the same subject
+#corfit <- duplicateCorrelation(dat,design,block=desc$individual)
+#corfit$consensus
+
+#fit model
+fit <- lmFit(norm.rma,design)
+#block=desc$individual_,correlation=corfit$consensus)
+fit <- eBayes(fit)
+
+#build the (contrast) matrix to compute some group differences of interest based on the model parameters
+cont.matrix <- makeContrasts(
+  treated_vs_control = treated - control,
+  levels = colnames(design)
+)
+#compute the contrast fits
+contrast.fit <- contrasts.fit(fit, cont.matrix)
+contrast.fit <- eBayes(contrast.fit)
+
+#extract resulting contrasts based on the model, and save those in a table; also save some graphical representations
+files.c <- saveStatOutput(cont.matrix,contrast.fit,postfix="",annotation=NULL)
+
+#create summary table of the contrast results
+createPvalTab(files.c,postfix="c",html=TRUE)
