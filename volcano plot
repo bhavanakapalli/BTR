@@ -1,0 +1,34 @@
+# Set the working directory to the folder containing the data file
+setwd("direction to file")
+
+# Load the data
+data <- read.table("table_treated_vs_control.tab", header=TRUE, sep="\t")
+
+# Select the columns with the relevant data
+logFC <- data$logFC
+foldChange <- data$Fold.Change
+pValue <- data$P.Value
+adjPValue <- data$adj.P.Val
+entrezIDs <- data$Entrez.Gene.ID
+
+# Create the volcano plot
+upregulated <- pValue < 0.05 & logFC > 1
+downregulated <- pValue < 0.05 & logFC < -1
+non_significant <- !upregulated & !downregulated
+colors <- ifelse(upregulated, "red", ifelse(downregulated, "blue", "gray"))
+
+png("volcano_plot.png", width = 600, height = 400, res = 72)
+
+plot(-log10(pValue), logFC,
+pch = 20, cex = 0.6, col = colors,
+xlab = "-log10(P-value)", ylab = "Log2(Fold Change)")
+
+abline(h = c(-1, 1), col = "gray", lty = 2)
+abline(v = -log10(0.05), col = "gray", lty = 2)
+
+# Add labels for the top differentially expressed genes
+topGenes <- head(order(pValue), 10)
+text(-log10(pValue[topGenes]), logFC[topGenes], labels = entrezIDs[topGenes], pos = 3, cex = 0.6, col = colors[topGenes])
+
+# Save the plot to the PNG file
+dev.off()
